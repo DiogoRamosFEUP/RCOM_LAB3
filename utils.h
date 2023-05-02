@@ -13,9 +13,9 @@
 #include <time.h>
 #include <math.h>
 
-#define MODEMDEVICE "/dev/ttyS1"
-#define BAUDRATE B9600
-#define _POSIX_SOURCE 1 /* POSIX compliant source */
+#define MODEMDEVICE "/dev/ttyS1" //penso que é neste, senão fica para o /dev/ttyS0
+#define BAUDRATE B115200
+#define _POSIX_SOURCE 1
 #define FALSE 0
 #define TRUE 1
 #define ERR 0x36
