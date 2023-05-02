@@ -25,7 +25,7 @@ char readSupervisao(int fd, int contador, char C){
 
 	case 2:
 		if(buf[0]==SET[2])return C;
-		//special case;
+		//caso especial;
 		if(C==0x07 && buf[0]==0x0B){
 			return 0x0C;
 		}
