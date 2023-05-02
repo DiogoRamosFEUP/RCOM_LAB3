@@ -13,7 +13,7 @@ char readSupervisao(int fd, int contador, char C){
 	return ERR;
 	}
 
-    //Maquina de estados para receber
+    //Maquina de estados para receber SET
 	switch(contador){
 	case 0:
 		if(buf[0]==SET[0])return 0x7E;
