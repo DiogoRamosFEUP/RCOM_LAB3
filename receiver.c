@@ -5,7 +5,7 @@ char readSupervisao(int fd, int contador, char C){
 	
 	char buf[1];
 
-    //caso de erro
+    
 	int res=0;
     res = read(fd,buf,1); /*retorna apos um caracter ter sido inserido*/
 	if(res==-1){
