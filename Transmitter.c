@@ -22,11 +22,12 @@ void stoppingll()
 
 void resetRRRejFlags() //Func para dar reset as flags RR e REJ flags
 {
+	//adiantei isto para ver se nao me esquecia
 	RR_RECEIVED = FALSE;
 	REJ_RECEIVED = FALSE;
 }
 
-int sendReadDISC(int fd,int toRead) //ler trama
+int sendReadDISC(int fd,int toRead) //Func para ler trama
 {
 	if (toRead == TRUE)
 	{
@@ -47,6 +48,25 @@ int sendReadDISC(int fd,int toRead) //ler trama
 
 	write(fd,disc,5);
 	return 0;
+}
+
+int escreverBytes(int fd) // Func para escrever os bytes do código
+{
+	char ua[5] = {0x7E,0x03,0x07,0x03^0x07,0x7E}; //possiveis códigos
+	int res;
+
+	res = write(fd,ua,5);
+	printArray(ua,5);
+	printf("escreverBytes: %d bytes escritos\n", res);
+	return res;
+}
+
+void escreverSet(int fd) //Func para escrever o SET
+{
+	int res;
+	char set[5] = {0x7E,0x03,0x03,0x00,0x7E}; //SET possível
+	res=write(fd,set,5);
+	printf("escreverSet: %d bytes escritos\n", res);
 }
 
 void atende() // Func para fazer um timer para o transmissor
@@ -104,136 +124,6 @@ int compareSupervisao(int fd) //Func para comparar o codigo do ficheiro com o qu
 	unsigned char vetor = 0x5C;
 	int k = readSupervisao(vetor,fd);
 	return k;
-}
-
-int sendInfoFile(int fd, unsigned char *buf, int size) //Func para enviar porçoes do ficheiro para o receiver
-{
-	int newSize = (size+6),i,j,res,k; // alocação do novo tamanho do ficheiro
-	unsigned char BCC2,BCC1; // blocos das tramas
-
-	for (i = 0; i < size; i++)
-	{
-		if (buf[i] == 0x7E || buf[i] == 0x7D)
-		{
-			newSize++;
-		}
-	}
-
-	
-	BCC2 = buf[0] ^ buf[1]; //calcular BCC2
-	for (i = 2; i < size;i++)
-	{
-		BCC2 = BCC2^buf[i];
-	}
-
-	unsigned char *dataPacket = (unsigned char*)malloc(newSize); //alocar memória para o pacote de dados
-
-	dataPacket[0] = FLAG;
-	dataPacket[1] = 0x03;
-	dataPacket[2] = C1;
-	BCC1 = dataPacket[1]^C1;
-	dataPacket[3] = BCC1;
-
-	j = 5;
-	k = 4;
-	for (i = 0; i < size;i++)
-	{
-		if (buf[i] == 0x7E)
-		{
-			dataPacket[k] = 0x7D;
-			dataPacket[j] = 0x5E;
-			k++;
-			j++;
-		}
-
-		if (buf[i] == 0x7D)
-		{
-			dataPacket[k] = 0x7D;
-			dataPacket[j] = 0x5D;
-			k++;
-			j++;
-		}
-
-		if(buf[i] != 0x7D && buf[i] != 0x7E)
-			dataPacket[k] = buf[i];
-
-		j++;
-		k++;
-	}
-
-	//indicação do que cada pacote de data é
-	dataPacket[newSize-2] = BCC2;
-	dataPacket[newSize-1] = FLAG;
-
-	res = write(fd,dataPacket,newSize);
-		printf("Quinto byte do datapacket 0x%02x\n",dataPacket[4]);
-	if (res == 0 || res == -1)
-	{
-		printf("sendInfoFile() - %d bytes escritos.\n",res);
-		return res;
-	}
-	return res;
-}
-
-int getDataPacket(int fd) //Func para dividir porções do ficheiro em porções equivalentes a bytes do PACKET_SIZE 
-{
-	int byteslidos = 0,res,lidos = 0;
-
-	unsigned char *dataPacket = (unsigned char *)malloc(PACKET_SIZE); //alocar memoria para o pacote de dados
-
-	while ((byteslidos = fread(dataPacket, sizeof(unsigned char), PACKET_SIZE, fp)) > 0) //ciclo para ler a string bit a bit
-	{
-		while (conta < 4)
-		{
-			res = sendInfoFile(fd,dataPacket,byteslidos); //enviar as porções do ficheiro
-
-			printf("O que foi lido : %d/%d \n",lidos,fsize);
-			flag = FALSE;
-			alarm(3);
-
-			if (res == -1) //debug
-			{
-				while (!flag){}
-				continue;
-			}
-			else
-			{
-				while(!flag && (RR_RECEIVED == FALSE && REJ_RECEIVED == FALSE))
-				{
-					detectRRorREJ(fd);
-				}
-			}
-
-			if (RR_RECEIVED)
-			{
-				conta = 0;
-				alarm(0);
-				printf("RR TRUE - inside rr IF\n");
-				printf("NEXT PACKET\n");
-				dataPacket = memset(dataPacket, 0, PACKET_SIZE);
-				lidos += byteslidos;
-				resetRRRejFlags();
-				break;
-			}
-			if (REJ_RECEIVED)
-			{
-				printf("REJ Received TRUE - inside REJ IF\n");
-				printf("RESENDING...\n");
-				resetRRRejFlags();
-				continue;
-			}
-			printf("No RR or REJ received \n");
-
-			resetRRRejFlags();
-			continue;
-		}
-		if(conta>=4){
-			printf("TIMEDOUT WITH READBYTES %d",lidos);
-			return lidos;
-		}
-	}
-	STOP = TRUE;
-	return lidos;
 }
 
 unsigned char *buildStartPacket(int fd) //Func para construir o pacote inicial
@@ -342,7 +232,7 @@ unsigned char *buildStartPacket(int fd) //Func para construir o pacote inicial
 	int res;
 	res = write(fd, dataPackage, sizeFinal);
 
-	printf("%d bytes written\n",res);
+	printf("%d bytes escritos\n",res);
 	return 0;
 }
 
@@ -376,4 +266,49 @@ int llwrite(int fd) //Func para escrever o ll no transmissor
 	res = getDataPacket(fd);
 	stoppingLL();
 	return res;
+}
+
+int llclose(int fd) //Func para fechar o ll no transmissor
+{
+	int receivedDISC = FALSE;
+	int res = 0;
+	while(conta < 4)
+	{
+		sendReadDISC(fd,FALSE);
+		printf("DISCONNECT .\n");
+		alarm(3);
+
+		while(!flag && STOP == FALSE)
+		{
+			res = sendReadDISC(fd,TRUE);
+			
+			if (res == 0){
+				printf("DISCONNECT Recebido.\n");				
+				STOP = TRUE;
+				receivedDISC=TRUE;
+			}
+		}
+
+		if(STOP==TRUE)
+		{
+			alarm(0);
+			stoppingLL();
+			break;;
+		}
+		else
+			flag=0;
+	}
+	if(receivedDISC==FALSE){ //Failsafe da não receção do DISCONNECT
+		printf("Não recebido DISCONNECT do Receiver\n");
+		return -1;	
+	
+	}
+	res = escreverBytes(fd); //escrever os bytes
+	if (res == 5)
+	{
+		printf("UA enviado...\n");
+		printf("------FIM------\n");
+	}
+
+	return 0;
 }
