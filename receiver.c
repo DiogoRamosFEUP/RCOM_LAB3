@@ -43,3 +43,35 @@ char readSupervisao(int fd, int contador, char C){
 		return ERR;
 	}
 }
+
+
+void llopen(int fd, int type){
+
+ char ua[5]={0x7E,0x03,0x07,0x03^0x07,0x7E};
+
+ char readchar[2];
+ int contador = 0;
+
+ if(type==0){
+
+	 while (STOP==FALSE) {  /*condição para haver loop e iniciar o ciclo*/
+
+	  readchar[0]=maquina_estados(fd,contador,0x03);
+	  printf("0x%02x \n",(unsigned char)readchar[0]);
+	  readchar[1]='\0';
+
+	  contador++;
+
+	  if(readchar[0]==ERR)contador=0;
+	  if(readchar[0]==ERR2)contador=-1;
+        
+        //condicao de paragem do ciclo while
+	  	if (contador==5){
+		 STOP=TRUE;
+	    }
+
+	 }
+ }
+	printf("Sending UA...\n");
+    writeBytes(fd,ua);
+}
